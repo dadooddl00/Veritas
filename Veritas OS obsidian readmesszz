@@ -40,3 +40,49 @@ Aucune catégorie n'est fusionnée. Aucun modèle n'est défendu sans révision 
 
 ---
 *Dernière mise à jour : à la main, au fil des étapes.*
+
+VERITAS OS 000
+Un coffre Obsidian conçu comme un système d'exploration et de raisonnement, basé sur le protocole VERITAS Nemesis.
+Philosophie
+VERITAS OS part d'un principe simple : la plupart des notes qu'on prend ne se distinguent jamais entre ce qu'on observe, ce qu'on suppose, et ce qu'on prédit. Résultat : on croit savoir des choses qu'on n'a en réalité que supposées.
+Ce coffre impose une séparation stricte de ces catégories dans chaque note d'étude :
+OBS — observations brutes, vérifiables
+MOD — modèles explicatifs (avec hypothèses, contradictions, confiance)
+PRED — prédictions testables
+UNK — inconnues identifiées
+Aucun modèle n'est figé. Toute preuve contradictoire doit entraîner une révision ou un rejet — jamais une défense.
+Architecture du coffre
+```
+VERITAS-OS/
+├── README.md
+├── Dashboard.md
+├── Templates/
+│   ├── VERITAS_Template.md   → note d'étude standard
+│   ├── Baseline.md           → état des lieux d'un sujet
+│   ├── Daily.md              → journal quotidien
+│   └── Hypothesis.md         → suivi d'une hypothèse isolée
+├── Journal/                  → notes quotidiennes
+├── Etudes/                   → notes VERITAS complètes (le cœur du système)
+├── Baselines/                → snapshots "ce qu'on sait" par sujet
+├── Concepts/                 → définitions et notions transverses
+└── Sources/                  → références externes, citations, liens
+```
+Workflow VERITAS dans Obsidian
+On ouvre une nouvelle note dans `Etudes/`.
+On insère `VERITAS_Template.md` via Templater.
+On remplit OBS avant toute interprétation (E1).
+On génère au moins 2 modèles concurrents si le sujet le permet (E2).
+On identifie l'observation qui aurait le plus de pouvoir discriminant (E5).
+On met à jour `Baselines/` si la note change l'état de connaissance sur un sujet.
+Une fois par semaine, on revoit les inconnues à plus forte valeur (Q4) depuis le Dashboard.
+Plugins requis
+Templater — génération des templates (installé à l'étape suivante)
+Dataview — pour que le Dashboard agrège automatiquement les notes (étape ultérieure)
+Statut du projet
+[x] Étape 1 — Structure de dossiers + README
+[ ] Étape 2 — Installation et configuration de Templater
+[ ] Étape 3 — VERITAS_Template.md (note d'étude)
+[ ] Étape 4 — Dashboard.md (vue d'ensemble, nécessite Dataview)
+[ ] Étape 5 — Templates secondaires (Baseline, Daily, Hypothesis)
+Licence
+Usage personnel. À adapter librement.
