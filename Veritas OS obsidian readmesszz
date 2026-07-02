@@ -1,0 +1,42 @@
+# VERITAS-OS
+
+Coffre Obsidian structuré autour du protocole **VERITAS** — un cadre de raisonnement exploratoire basé sur la convergence asymptotique vers la réalité (observations, modèles concurrents, révision continue).
+
+## Structure du coffre
+
+| Dossier | Contenu |
+|---|---|
+| `Templates/` | Modèles de notes (ex. `VERITAS_Template.md`) |
+| `Journal/` | Notes quotidiennes |
+| `Etudes/` | Notes de fond, synthèses thématiques |
+| `Baselines/` | États de référence à un instant T |
+| `Concepts/` | Fiches de concepts isolés et définis |
+| `Sources/` | Références, lectures, matériel source |
+
+## Fichiers clés
+
+- `Dashboard.md` — point d'entrée quotidien, accès rapides et suivi de l'exploration en cours
+- `README.md` — ce fichier
+
+## Principe d'usage
+
+Chaque note appliquant le protocole VERITAS distingue explicitement :
+
+- **OBS** — observations
+- **MOD** — modèles explicatifs
+- **HYP** — hypothèses
+- **PRED** — prédictions
+- **UNK** — inconnues à haute valeur
+
+Aucune catégorie n'est fusionnée. Aucun modèle n'est défendu sans révision face à une preuve contraire.
+
+## État du projet
+
+- [x] Coffre créé
+- [x] Dashboard créé
+- [x] README rédigé
+- [x] Templater installé
+- [x] VERITAS_Template.md créé
+
+---
+*Dernière mise à jour : à la main, au fil des étapes.*
