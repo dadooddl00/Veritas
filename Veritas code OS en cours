@@ -1,0 +1,428 @@
+import os
+import json
+import re
+from enum import Enum
+from dataclasses import dataclass, field
+from typing import List
+import requests
+
+# ----------------------------------------------------------------------
+# CONFIG + CLASSES (noyau stable)
+# ----------------------------------------------------------------------
+CONFIG = {"min_sources_high_stakes": 2}
+
+
+@dataclass
+class ObservedFeatures:
+    """Uniquement des CONSTATS — produits par le LLM ou l'heuristique.
+    Aucune politique ici (pas de verification/stakes/external_sources)."""
+    truth_apt: bool
+    contains_hypothesis: bool = False
+    contains_causal_claim: bool = False       # affirmation causale ("X provoque Y")
+    contains_causal_question: bool = False    # demande d'explication ("pourquoi X ?")
+    contains_quantitative_claim: bool = False
+    is_controversial_topic: bool = False      # observation lexicale, pas jugement
+    explicit_depth_request: bool = False
+    is_sensitive_topic: bool = False          # santé/sécurité détecté dans le texte
+    mentions_current_fact: bool = False       # info datée/actuelle (président, CEO, "aujourd'hui"...)
+    analysis_confidence: float = 0.75         # confiance de l'analyseur dans SES constats
+    uncertainty_level: float = 0.5            # incertitude perçue du sujet lui-même
+
+
+@dataclass
+class Assessment:
+    """Calculé par des règles DÉTERMINISTES à partir d'ObservedFeatures.
+    C'est ici que vivent les décisions de politique — jamais dans le LLM."""
+    verification: str        # "none" | "optional" | "required"
+    external_sources: str    # "none" | "recommended" | "required"
+    sensitivity: str         # "low" | "medium" | "high"
+    stakes_level: str        # "low" | "medium" | "high"
+    stakes_reason: List[str] = field(default_factory=list)
+
+
+def assess(f: ObservedFeatures) -> Assessment:
+    """Règle déterministe unique : aucune valeur de politique ne provient
+    directement du LLM. Le LLM/heuristique ne fournit que des constats."""
+    reasons = []
+
+    if f.is_sensitive_topic:
+        stakes = "high"
+        reasons.append("sujet_sensible_sante_securite")
+    elif f.is_controversial_topic or f.explicit_depth_request:
+        stakes = "high"
+        reasons.append("controverse_ou_approfondissement_demande")
+    elif f.contains_causal_claim or f.contains_quantitative_claim or f.mentions_current_fact:
+        stakes = "medium"
+        reasons.append("affirmation_causale_chiffree_ou_fait_date")
+    else:
+        stakes = "low"
+
+    verification = "required" if (f.is_sensitive_topic or f.contains_quantitative_claim
+                                   or f.mentions_current_fact or f.analysis_confidence < 0.4) else "optional"
+    external_sources = "required" if (f.is_sensitive_topic or f.is_controversial_topic
+                                       or f.mentions_current_fact) else (
+        "recommended" if f.contains_quantitative_claim else "none")
+    sensitivity = "high" if f.is_sensitive_topic else ("medium" if f.is_controversial_topic else "low")
+
+    return Assessment(verification, external_sources, sensitivity, stakes, reasons)
+
+
+@dataclass
+class DecisionContext:
+    """Assemblage features + assessment, format consommé par le Kernel
+    (inchangé pour ne pas casser kernel_decide/build_pipeline)."""
+    truth_apt: bool
+    verification: str
+    external_sources: str
+    sensitivity: str
+    stakes_level: str
+    stakes_reason: List[str] = field(default_factory=list)
+    contains_hypothesis: bool = False
+    contains_causal_claim: bool = False
+    contains_quantitative_claim: bool = False
+    analysis_confidence: float = 0.75
+    uncertainty_level: float = 0.5
+    is_controversial: bool = False
+    explicit_depth_request: bool = False
+    is_sensitive_risk: bool = False
+
+    @classmethod
+    def from_features(cls, f: ObservedFeatures) -> "DecisionContext":
+        a = assess(f)
+        return cls(
+            truth_apt=f.truth_apt,
+            verification=a.verification,
+            external_sources=a.external_sources,
+            sensitivity=a.sensitivity,
+            stakes_level=a.stakes_level,
+            stakes_reason=a.stakes_reason,
+            contains_hypothesis=f.contains_hypothesis,
+            contains_causal_claim=f.contains_causal_claim,
+            contains_quantitative_claim=f.contains_quantitative_claim,
+            analysis_confidence=f.analysis_confidence,
+            uncertainty_level=f.uncertainty_level,
+            is_controversial=f.is_controversial_topic,
+            explicit_depth_request=f.explicit_depth_request,
+            is_sensitive_risk=f.is_sensitive_topic,
+        )
+
+
+class ConstraintClass(Enum):
+    SECURITE = 3
+    EPISTEMIQUE = 2
+    OPTIMISATION = 1
+
+
+@dataclass
+class Constraint:
+    name: str
+    cls: ConstraintClass
+    detail: str
+
+
+# ----------------------------------------------------------------------
+# TRIAGE : Direct / Standard / Approfondi
+# ----------------------------------------------------------------------
+def determine_mode(ctx: DecisionContext) -> str:
+    risk = ctx.is_sensitive_risk or ctx.sensitivity == "high"
+    if (
+        ctx.is_controversial
+        or risk
+        or ctx.explicit_depth_request
+        or ctx.uncertainty_level >= 0.7
+        or (ctx.stakes_level == "high" and (ctx.contains_causal_claim or ctx.contains_quantitative_claim))
+    ):
+        return "approfondi"
+
+    if (
+        ctx.stakes_level == "low"
+        and not ctx.contains_hypothesis
+        and not ctx.contains_causal_claim
+        and not ctx.contains_quantitative_claim
+        and ctx.verification != "required"
+        and ctx.uncertainty_level < 0.4
+    ):
+        return "direct"
+
+    return "standard"
+
+
+def kernel_decide(ctx: DecisionContext) -> List[Constraint]:
+    constraints = []
+    mode = determine_mode(ctx)
+
+    # Fix #1 : risque santé/sécurité => vérification obligatoire, quel que
+    # soit le mode d'expression (créatif, préface, etc.) — pas seulement
+    # basé sur ctx.verification qui peut être mal classifié en amont.
+    if (ctx.truth_apt and ctx.verification == "required") or ctx.is_sensitive_risk or ctx.analysis_confidence < 0.4:
+        constraints.append(Constraint("verification_obligatoire", ConstraintClass.SECURITE,
+                                       "Vérification obligatoire (fait sensible, requis, ou confiance d'analyse faible)"))
+
+    if mode == "standard":
+        constraints.append(Constraint("mode_standard", ConstraintClass.EPISTEMIQUE,
+                                       "Séparer su/interprété/inconnu ; envisager 1 alternative ; vérifier si besoin ; confiance explicite"))
+        if ctx.external_sources in ("recommended", "required") or ctx.contains_quantitative_claim:
+            constraints.append(Constraint("sources_min", ConstraintClass.EPISTEMIQUE,
+                                           "≥1 source pour affirmation datée/chiffrée"))
+
+    if mode == "approfondi":
+        constraints.append(Constraint("mode_d_obligatoire", ConstraintClass.EPISTEMIQUE,
+                                       "≥2 modèles explicatifs concurrents, test discriminant, conclusion provisoire"))
+        constraints.append(Constraint("sources_min", ConstraintClass.EPISTEMIQUE,
+                                       f"≥{CONFIG['min_sources_high_stakes']} sources indépendantes"))
+
+    # Fix #3 : "consensus ≠ preuve" n'a de sens que s'il y a effectivement
+    # un consensus à mesurer, donc seulement quand plusieurs modèles sont
+    # consultés (mode != "direct"). Sinon la contrainte était décorative.
+    if mode != "direct":
+        constraints.append(Constraint("consensus_non_preuve", ConstraintClass.EPISTEMIQUE,
+                                       "Convergence inter-modèles ≠ preuve : exige ≥1 source externe indépendante"))
+    constraints.append(Constraint("tracabilite", ConstraintClass.EPISTEMIQUE, "Traçabilité obligatoire"))
+
+    # Fix #4 (Art. 9 / Étape 5) : la checklist hypothèse s'applique au moment
+    # d'un test discriminant, donc seulement en mode "approfondi" — pas dès
+    # que le mode n'est pas "direct" (trop large, incluait "standard").
+    if ctx.contains_hypothesis and ctx.truth_apt and mode == "approfondi":
+        constraints.append(Constraint("checklist_hypothese", ConstraintClass.EPISTEMIQUE,
+                                       "Art. 9 : checklist 6 étapes (Annexe) avant verdict sur l'hypothèse"))
+
+    if mode == "direct":
+        constraints.append(Constraint("cout_minimal", ConstraintClass.OPTIMISATION,
+                                       "Tâche mécanique/faible enjeu : 1 seul modèle, pas de recherche"))
+
+    return constraints
+
+
+def resolve_conflicts(constraints: List[Constraint]) -> List[Constraint]:
+    names = {c.name for c in constraints}
+    if "verification_obligatoire" in names:
+        constraints = [c for c in constraints if c.cls != ConstraintClass.OPTIMISATION]
+    return sorted(constraints, key=lambda c: c.cls.value, reverse=True)
+
+
+def build_pipeline(ctx: DecisionContext, constraints: List[Constraint]) -> dict:
+    names = {c.name for c in constraints}
+    mode = determine_mode(ctx)
+
+    if mode == "approfondi":
+        n_models = 3
+    elif mode == "standard":
+        n_models = 2
+    else:
+        n_models = 1
+
+    min_sources = CONFIG["min_sources_high_stakes"] if "mode_d_obligatoire" in names else (1 if "sources_min" in names else 0)
+    # Fix #3 : consensus_non_preuve n'est plus décorative — si plusieurs modèles
+    # sont consultés et qu'aucune source n'était déjà exigée, en imposer 1.
+    if "consensus_non_preuve" in names and min_sources == 0:
+        min_sources = 1
+
+    return {
+        "mode": mode,
+        "context_summary": {
+            "stakes": ctx.stakes_level,
+            "confidence": ctx.analysis_confidence,
+            "uncertainty": ctx.uncertainty_level,
+            "risk": ctx.is_sensitive_risk,
+        },
+        "n_models": n_models,
+        "web_search_required": any(x in names for x in ["verification_obligatoire", "sources_min", "mode_d_obligatoire", "consensus_non_preuve"]),
+        "min_independent_sources": min_sources,
+        "checklist_hypothese_annexe": "checklist_hypothese" in names,
+        "constraints_applied": [f"[{c.cls.name}] {c.name}" for c in constraints],
+    }
+
+
+# ----------------------------------------------------------------------
+# LLM CALLER — OpenAI Compatible (xAI / OpenAI / compatibles)
+# ----------------------------------------------------------------------
+def openai_compatible_caller(prompt: str, model: str = "grok-3") -> str:
+    api_key = os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("API_BASE_URL", "https://api.x.ai/v1")
+
+    if not api_key:
+        raise ValueError("Définis XAI_API_KEY ou OPENAI_API_KEY dans l'environnement")
+
+    system_prompt = """Analyse le prompt utilisateur et retourne UNIQUEMENT un JSON valide.
+Tu ne dois produire QUE des CONSTATS sur le texte, jamais de décision de politique
+(pas de verification/stakes_level/external_sources — ces champs sont calculés
+ailleurs par des règles déterministes, pas par toi).
+
+{
+  "truth_apt": true/false,
+  "contains_hypothesis": true/false,
+  "contains_causal_claim": true/false,
+  "contains_causal_question": true/false,
+  "contains_quantitative_claim": true/false,
+  "is_controversial_topic": true/false,
+  "explicit_depth_request": true/false,
+  "is_sensitive_topic": true/false,
+  "mentions_current_fact": true/false,
+  "analysis_confidence": 0.XX,
+  "uncertainty_level": 0.XX
+}
+
+Distinction importante :
+- contains_causal_claim : le texte AFFIRME une relation de cause à effet
+  ("le vaccin X cause Y").
+- contains_causal_question : le texte DEMANDE une explication
+  ("pourquoi le ciel est bleu ?") — ce n'est PAS une affirmation à vérifier.
+
+Réponds exclusivement avec l'objet JSON. Pas de texte, pas de markdown, pas de ```."""
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Prompt à analyser : {prompt}"},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 700,
+    }
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    try:
+        response = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=20)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"Erreur d'appel API : {e}") from e
+
+    try:
+        content = response.json()["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, ValueError) as e:
+        raise RuntimeError(f"Réponse API mal formée : {e}") from e
+
+    start = content.find('{')
+    end = content.rfind('}') + 1
+    if start < 0 or end <= start:
+        raise RuntimeError("Aucun objet JSON trouvé dans la réponse du LLM")
+    return content[start:end]
+
+
+_REQUIRED_FEATURE_FIELDS = {
+    "truth_apt", "contains_hypothesis", "contains_causal_claim",
+    "contains_causal_question", "contains_quantitative_claim",
+    "is_controversial_topic", "explicit_depth_request",
+    "is_sensitive_topic", "mentions_current_fact", "uncertainty_level",
+}
+
+
+def validate_schema(data: dict) -> None:
+    """Valide uniquement des CONSTATS (ObservedFeatures) — plus aucun champ
+    de politique n'est attendu du LLM, donc plus rien à valider de ce côté."""
+    missing = _REQUIRED_FEATURE_FIELDS - data.keys()
+    if missing:
+        raise ValueError(f"Champs manquants dans la réponse LLM : {missing}")
+    if not (0.0 <= float(data["uncertainty_level"]) <= 1.0):
+        raise ValueError(f"uncertainty_level hors bornes : {data['uncertainty_level']!r}")
+
+
+# ----------------------------------------------------------------------
+# ANALYSEUR LOCAL SANS API (mode test / offline)
+# ----------------------------------------------------------------------
+def local_heuristic_analyzer(prompt: str) -> dict:
+    """Ne produit que des CONSTATS — aucune décision de politique ici.
+    Approximatif par nature, sert à tester le Kernel hors ligne."""
+    p = prompt.lower()
+
+    quantitative = bool(re.search(r"\d{2,}", p)) or any(
+        w in p for w in ["combien", "pourcentage", "taux", "chiffre", "statistique"]
+    )
+    # Distinction : affirmation causale (à vérifier) vs question causale
+    # (demande d'explication, pas une affirmation à trancher).
+    causal_question = p.strip().endswith("?") and any(w in p for w in ["pourquoi", "comment se fait-il"])
+    causal_claim = (not causal_question) and any(
+        w in p for w in ["cause", "entraîne", "provoque", "à cause de", "en raison de", "responsable de"]
+    )
+    hypothesis = any(w in p for w in ["si ", "suppose", "hypothèse", "imaginons", "et si"])
+    controversial = any(w in p for w in ["controvers", "débat", "polémique", "conspiration", "complot",
+                                          "convergence", "épistémolog", "epistemolog", "veritas"])
+    explicit_depth = any(w in p for w in ["en profondeur", "approfondi", "détaillé", "analyse complète",
+                                           "compare en détail", "explore"])
+    sensitive_topic = any(w in p for w in [
+        "vaccin", "santé", "sécurité", "danger", "médicament", "dose",
+        "arme", "explosif", "toxique", "overdose", "suicide"
+    ])
+    current_fact = any(w in p for w in ["actuel", "aujourd'hui", "récent", "cette année", "maintenant",
+                                         "qui est", "ceo", "président", "dernière version"])
+    uncertainty = 0.8 if controversial else (0.5 if (causal_claim or hypothesis) else 0.2)
+
+    return {
+        "truth_apt": True,
+        "contains_hypothesis": hypothesis,
+        "contains_causal_claim": causal_claim,
+        "contains_causal_question": causal_question,
+        "contains_quantitative_claim": quantitative,
+        "is_controversial_topic": controversial,
+        "explicit_depth_request": explicit_depth,
+        "is_sensitive_topic": sensitive_topic,
+        "mentions_current_fact": current_fact,
+        "analysis_confidence": 0.5,
+        "uncertainty_level": uncertainty,
+    }
+
+
+# ----------------------------------------------------------------------
+# Analyzer + Run
+# ----------------------------------------------------------------------
+class PromptAnalyzerLLM:
+    def __init__(self, offline: bool = False):
+        self.offline = offline
+
+    def analyze(self, prompt: str) -> DecisionContext:
+        if self.offline:
+            data = local_heuristic_analyzer(prompt)
+        else:
+            try:
+                raw = openai_compatible_caller(prompt)
+                data = json.loads(raw)
+                validate_schema(data)
+            except Exception as e:
+                print(f"[avertissement] analyse LLM indisponible ou invalide ({e}), bascule sur l'heuristique locale.")
+                data = local_heuristic_analyzer(prompt)
+
+        features = ObservedFeatures(
+            truth_apt=data.get("truth_apt", False),
+            contains_hypothesis=data.get("contains_hypothesis", False),
+            contains_causal_claim=data.get("contains_causal_claim", False),
+            contains_causal_question=data.get("contains_causal_question", False),
+            contains_quantitative_claim=data.get("contains_quantitative_claim", False),
+            is_controversial_topic=data.get("is_controversial_topic", False),
+            explicit_depth_request=data.get("explicit_depth_request", False),
+            is_sensitive_topic=data.get("is_sensitive_topic", False),
+            mentions_current_fact=data.get("mentions_current_fact", False),
+            analysis_confidence=data.get("analysis_confidence", 0.75),
+            uncertainty_level=data.get("uncertainty_level", 0.5),
+        )
+        return DecisionContext.from_features(features)
+
+
+def run(prompt: str, offline: bool = False) -> dict:
+    ctx = PromptAnalyzerLLM(offline=offline).analyze(prompt)
+    constraints = resolve_conflicts(kernel_decide(ctx))
+    return build_pipeline(ctx, constraints)
+
+
+# ----------------------------------------------------------------------
+# Demo
+# ----------------------------------------------------------------------
+if __name__ == "__main__":
+    has_key = bool(os.getenv("XAI_API_KEY") or os.getenv("OPENAI_API_KEY"))
+    offline_mode = not has_key or os.getenv("VERITAS_OFFLINE") == "1"
+
+    print("=" * 60)
+    print("VERITAS Kernel — mode", "OFFLINE (heuristique locale)" if offline_mode else "API (LLM réel)")
+    print("=" * 60)
+    if offline_mode and not has_key:
+        print("(Aucune clé API détectée — le triage utilise des règles locales approximatives,")
+        print(" utile pour tester la logique, pas pour un usage en production.)")
+
+    while True:
+        try:
+            prompt = input("\nPrompt > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if prompt.lower() in ("quit", "exit"):
+            break
+        if prompt:
+            print(json.dumps(run(prompt, offline=offline_mode), indent=2, ensure_ascii=False))
