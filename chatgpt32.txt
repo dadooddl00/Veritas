@@ -1,0 +1,405 @@
+
+
+
+
+
+
+
+Profiter de l’offre
+txt
+from dataclasses import dataclass, field
+from typing import Literal
+from enum import Enum
+
+# ----------------------------------------------------------------------
+# 1. CONFIG — paramètres ajustables, séparés des principes
+# ----------------------------------------------------------------------
+
+CONFIG = {
+    "min_sources_high_stakes": 2,
+    "disagreement_threshold": 0.40,   # au-delà -> Mode D
+    "min_independence": 0.5,
+    "risk_threshold_verification": 0.5,  # au-delà -> vérification obligatoire
+}
+
+# ----------------------------------------------------------------------
+# 2. PROMPT ANALYZER — construit un DecisionContext
+# ----------------------------------------------------------------------
+
+@dataclass
+class DecisionContext:
+
+    # Nature du prompt
+    speech_act: Literal[
+        "question",
+        "assertion",
+        "instruction",
+        "comparison",
+        "summary",
+        "translation",
+        "critique",
+        "analysis",
+        "other"
+    ]
+
+    # Objectif de la demande
+    goal: Literal[
+        "information",
+        "explanation",
+        "analysis",
+        "comparison",
+        "prediction",
+        "creation",
+        "translation",
+        "plan",
+        "opinion",
+        "other"
+    ]
+
+    # Domaine concerné
+    domain: Literal[
+        "real_world",
+        "fiction",
+        "opinion",
+        "code",
+        "mathematics",
+        "meta_reasoning",
+        "conversation"
+    ]
+
+    # Peut être vrai ou faux ?
+    truth_apt: bool
+
+    # Vérification
+    verification: Literal[
+        "none",
+        "optional",
+        "required"
+    ]
+
+    # Sources externes
+    external_sources: Literal[
+        "none",
+        "recommended",
+        "required"
+    ]
+
+    # Temporalité
+    temporality: Literal[
+        "atemporal",
+        "historical",
+        "current",
+        "future"
+    ]
+
+    # Sensibilité
+    sensitivity: Literal[
+        "low",
+        "medium",
+        "high"
+    ]
+
+    # Niveau d'enjeu
+    stakes_level: Literal[
+        "low",
+        "medium",
+        "high"
+    ]
+
+    # Raisons éventuelles
+    stakes_reason: list[str] = field(default_factory=list)
+
+    # Indices détectés
+    contains_hypothesis: bool = False
+    contains_causal_claim: bool = False
+    contains_quantitative_claim: bool = False
+
+    # Confiance dans l'analyse
+    analysis_confidence: float = 1.0
+
+
+def analyze_prompt(prompt: str) -> DecisionContext:
+    """
+    Analyse le prompt et construit un DecisionContext.
+    Version provisoire : sera implémentée ultérieurement.
+    """
+    pass
+
+
+
+# ----------------------------------------------------------------------
+# 3. KERNEL — méta-règles épistémiques, produit des contraintes
+# ----------------------------------------------------------------------
+
+class ConstraintClass(Enum):
+    SECURITE = 3       # priorité la plus haute
+    EPISTEMIQUE = 2
+    OPTIMISATION = 1   # priorité la plus basse
+
+
+@dataclass
+class Constraint:
+    name: str
+    cls: ConstraintClass
+    detail: str
+
+
+def kernel_decide(ctx: DecisionContext) -> list[Constraint]:
+    """Le Kernel applique uniquement des méta-règles à partir du DecisionContext."""
+
+    constraints: list[Constraint] = []
+
+    # Vérification obligatoire
+    if (
+        ctx.truth_apt
+        and ctx.verification == "required"
+    ):
+        constraints.append(Constraint(
+            "verification_obligatoire",
+            ConstraintClass.SECURITE,
+            "Une affirmation vérifiable doit être vérifiée."
+        ))
+
+    # Sources externes
+    if ctx.external_sources == "required":
+        constraints.append(Constraint(
+            "sources_min",
+            ConstraintClass.EPISTEMIQUE,
+            f"Au moins {CONFIG['min_sources_high_stakes']} sources indépendantes requises."
+        ))
+
+    # Consensus ≠ preuve (toujours actif)
+    constraints.append(Constraint(
+        "consensus_non_preuve",
+        ConstraintClass.EPISTEMIQUE,
+        "Un accord inter-modèles ne remplace jamais une source indépendante."
+    ))
+
+    # Traçabilité (toujours active)
+    constraints.append(Constraint(
+        "tracabilite",
+        ConstraintClass.EPISTEMIQUE,
+        "Toute conclusion doit rester justifiable et révisable."
+    ))
+
+    # Hypothèse factuelle
+    if (
+    	ctx.contains_hypothesis
+    	and ctx.truth_apt
+):
+        constraints.append(Constraint(
+            "checklist_hypothese",
+            ConstraintClass.EPISTEMIQUE,
+            "Appliquer la checklist VERITAS avant toute conclusion."
+        ))
+
+    # Optimisation
+    if ctx.stakes_level == "low":
+        constraints.append(Constraint(
+            "cout_minimal",
+            ConstraintClass.OPTIMISATION,
+            "Un seul modèle suffit."
+        ))
+
+    return constraints
+
+# ----------------------------------------------------------------------
+# 4. CONFLICT RESOLVER — priorité par classe, pas par ordre d'écriture
+# ----------------------------------------------------------------------
+
+def resolve_conflicts(constraints: list[Constraint]) -> list[Constraint]:
+    """
+    Résout les conflits potentiels : une contrainte OPTIMISATION ne peut jamais
+    annuler une contrainte SECURITE ou EPISTEMIQUE. Ici : si 'verification_obligatoire'
+    est présente, on retire toute contrainte qui la contredirait implicitement.
+    """
+    names = {c.name for c in constraints}
+    if "verification_obligatoire" in names:
+        constraints = [c for c in constraints if c.name != "disable_verification"]
+    # tri par priorité décroissante pour affichage / exécution
+    return sorted(constraints, key=lambda c: c.cls.value, reverse=True)
+
+
+# ----------------------------------------------------------------------
+# 5. ORCHESTRATEUR — construit un pipeline satisfaisant les contraintes
+# ----------------------------------------------------------------------
+
+def build_pipeline(ctx: DecisionContext, constraints: list[Constraint]) -> dict:
+    names = {x.name for x in constraints}
+    pipeline = {
+        "context": ctx.__dict__,
+        "n_models": 1,
+        "web_search_required": False,
+        "min_independent_sources": 0,
+        "mode_d": False,
+        "verification": False,
+        "constraints_applied": [f"[{x.cls.name}] {x.name}: {x.detail}" for x in constraints],
+    }
+
+    if "verification_obligatoire" in names:
+        pipeline["verification"] = True
+        pipeline["web_search_required"] = True
+
+    if "sources_min" in names:
+        pipeline["min_independent_sources"] = CONFIG["min_sources_high_stakes"]
+        pipeline["n_models"] = 2
+        pipeline["web_search_required"] = True
+
+    if "cout_minimal" in names:
+        pipeline["n_models"] = 1
+
+    if "mode_d_obligatoire" in names:
+        pipeline["mode_d"] = True
+        pipeline["web_search_required"] = True
+
+    if "checklist_hypothese" in names:
+        pipeline["checklist_hypothese_annexe"] = True
+
+    return pipeline
+
+
+def run(prompt: str) -> dict:
+        ctx = analyze_prompt(prompt)
+	raw_constraints = kernel_decide(ctx)
+	constraints = resolve_conflicts(raw_constraints)
+	return build_pipeline(ctx, constraints)
+
+
+# ----------------------------------------------------------------------
+# 6. DÉMONSTRATION — critère de succès binaire : le script tourne et produit
+#    des pipelines différents selon l'entrée.
+# ----------------------------------------------------------------------
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("VERITAS Kernel")
+    print("Tape 'quit' pour quitter.")
+    print("=" * 60)
+
+    while True:
+        prompt = input("\nPrompt > ").strip()
+
+        if prompt.lower() in ("quit", "exit"):
+            print("Au revoir.")
+            break
+
+        if not prompt:
+            continue
+
+        resultat = run(prompt)
+
+        print("\nRésultat")
+        print("-" * 40)
+
+        for cle, valeur in resultat.items():
+            print(f"{cle}: {valeur}")
+
+Problèmes techniques et structurels principaux dans ce code.
+
+Erreur bloquante : indentation
+Dans run() :
+
+ctx = analyze_prompt(prompt)
+	raw_constraints = kernel_decide(ctx)
+	constraints = resolve_conflicts(raw_constraints)
+	return build_pipeline(ctx, constraints)
+Les tabulations rendent le code invalide en Python pur. Tout doit être aligné avec des espaces homogènes.
+
+Fonction non implémentée critique
+
+def analyze_prompt(prompt: str) -> DecisionContext:
+    pass
+Le système est non exécutable sans ce composant. Or il est central : toute la logique dépend de DecisionContext. Actuellement, le pipeline est théorique uniquement.
+
+Incohérence logique : contraintes déclarées vs utilisées
+
+mode_d est référencé dans build_pipeline :
+
+if "mode_d_obligatoire" in names:
+Mais aucune contrainte "mode_d_obligatoire" n’est jamais produite dans kernel_decide.
+
+=> branche morte.
+
+Résolution de conflits insuffisante
+
+if "verification_obligatoire" in names:
+    constraints = [c for c in constraints if c.name != "disable_verification"]
+Problème :
+
+disable_verification n’est jamais créée
+
+donc cette règle est actuellement inutile
+
+la résolution est asymétrique (aucune vraie logique de conflit entre classes)
+
+Redondance conceptuelle
+
+ConstraintClass est défini mais peu exploité dans la résolution
+
+priorité utilisée uniquement pour tri, pas pour arbitrage réel
+
+Actuellement :
+
+pas de suppression de contraintes de rang inférieur en cas de conflit réel
+
+donc le système ne fait pas de “résolution”, seulement du filtrage cosmétique
+
+truth_apt sous-utilisé
+Il conditionne seulement une règle de vérification.
+Mais il pourrait structurer :
+
+activation du web
+
+niveau de prudence
+
+nombre de sources
+
+Actuellement sous-exploité pour un signal central.
+
+Pipeline incomplet sémantiquement
+
+"web_search_required": False,
+"n_models": 1,
+Ces valeurs sont statiques par défaut et peu dérivées des contraintes réelles. Le système reste heuristique simple malgré une architecture complexe.
+
+Contradiction de design implicite
+Tu annonces :
+
+Kernel = méta-règles épistémiques
+
+Orchestrateur = exécution
+
+Mais :
+
+le Kernel décide déjà de règles très concrètes (sources, web, modèles)
+=> chevauchement fonctionnel entre Kernel et Orchestrateur
+
+Typage incomplet / fragile
+
+analysis_confidence n’est jamais utilisé
+
+stakes_reason n’influence rien
+
+plusieurs champs du DecisionContext sont décoratifs
+
+Conclusion synthétique :
+
+architecture conceptuellement cohérente
+
+implémentation incomplète et partiellement incohérente
+
+plusieurs branches logiques mortes
+
+résolution de conflits pas réellement opérationnelle
+
+séparation Kernel / Orchestrateur encore imparfaite au niveau effectif, malgré la bonne intention structurelle
+
+Si nécessaire, on peut proposer une version corrigée où :
+
+analyze_prompt devient un vrai classifieur minimal
+
+les contraintes deviennent mutuellement exclusives par règles de priorité
+
+le pipeline est dérivé strictement d’un graphe de décisions plutôt que de flags indépendants
+
+

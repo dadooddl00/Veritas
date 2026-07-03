@@ -1,0 +1,180 @@
+
+
+
+
+
+
+
+Profiter de l’offre
+« Nous poursuivons le projet Veritas. Les principes fondamentaux (charte, protocole de désaccord, distinction savoir/penser/ignorer, etc.) sont déjà établis. Dans cette conversation, nous repartons sur une page plus légère afin de continuer à les mettre à l'épreuve plutôt qu'à les répéter. » crée moi une charte bien ordonnée qui suivrait les principes de notre charte originale mais l'améliorerait dans la recherche de vérités.
+
+J'aime beaucoup l'objectif que tu fixes : ne pas simplement écrire une belle charte, mais produire une charte qui augmente réellement la qualité de la recherche.
+
+En reprenant l'architecture de VERITAS (Vision → Charte → Protocoles → Gouvernance...), je pense que la Charte doit rester extrêmement stable. Elle ne devrait contenir que des principes fondamentaux, indépendants de toute méthode.
+
+Voici la version que je proposerais aujourd'hui.
+
+CHARTE VERITAS
+Version de travail 2.0
+La vérité avant l'ego.
+La compréhension avant la victoire.
+Le respect avant la conclusion.
+
+Préambule
+VERITAS est une architecture de recherche.
+
+Son objectif n'est pas d'avoir raison.
+
+Son objectif est d'améliorer continuellement notre capacité à distinguer ce qui est vrai, ce qui est probable, ce qui reste incertain et ce que nous ignorons encore.
+
+Toute affirmation peut être révisée.
+
+Aucun participant n'est au-dessus de la recherche.
+
+I — Primauté de la vérité
+Nous recherchons la vérité avant la défense de nos idées.
+
+Une conclusion satisfaisante est celle qui résiste le mieux à l'examen critique, non celle qui nous plaît le plus.
+
+II — Humilité intellectuelle
+Nous reconnaissons que toute connaissance est limitée.
+
+Nous distinguons explicitement :
+
+ce que nous savons ;
+
+ce que nous pensons ;
+
+ce que nous supposons ;
+
+ce que nous ignorons.
+
+Cette distinction constitue une force, jamais une faiblesse.
+
+III — Charge de la preuve
+Celui qui affirme assume la responsabilité de justifier son affirmation.
+
+L'absence de preuve n'est pas une preuve.
+
+Le niveau de preuve attendu doit être proportionnel à l'importance de l'affirmation.
+
+IV — Réfutabilité
+Nous recherchons activement les faits capables de contredire nos hypothèses.
+
+Une idée qui ne pourrait jamais être mise en défaut ne peut prétendre au statut de connaissance.
+
+V — Désaccord constructif
+Le désaccord n'est pas un obstacle.
+
+Il constitue une méthode essentielle d'amélioration des connaissances.
+
+Le but d'une discussion n'est pas de produire un vainqueur mais une compréhension plus profonde.
+
+VI — Principe du meilleur contre-exemple
+Avant de défendre une idée, nous cherchons son contre-exemple le plus solide.
+
+Une idée qui résiste à ses meilleures critiques gagne en crédibilité.
+
+Une idée qui échoue progresse en étant corrigée.
+
+VII — Principe de proportion
+Le degré de confiance accordé à une conclusion doit rester proportionnel :
+
+à la qualité des preuves ;
+
+à leur diversité ;
+
+à leur reproductibilité ;
+
+aux critiques qu'elles ont déjà traversées.
+
+Les certitudes absolues demeurent exceptionnelles.
+
+VIII — Révision permanente
+Aucune conclusion n'est sacrée.
+
+Toute connaissance reste ouverte à la révision lorsqu'apparaissent :
+
+de nouvelles observations ;
+
+de meilleurs raisonnements ;
+
+de nouvelles méthodes.
+
+Changer d'avis devant de meilleures preuves constitue un progrès.
+
+IX — Principe de clarté
+Nous cherchons à exprimer les idées de la manière la plus simple compatible avec leur exactitude.
+
+La complexité ne vaut que lorsqu'elle est nécessaire.
+
+La précision prime sur l'impression.
+
+X — Respect intellectuel
+Nous critiquons les idées.
+
+Nous respectons les personnes.
+
+Une critique pertinente vise un raisonnement, jamais une identité.
+
+XI — Coopération cognitive
+Chaque participant devient une source potentielle de correction.
+
+Nous recherchons la complémentarité des perspectives plutôt que leur uniformité.
+
+L'intelligence collective naît de la confrontation honnête des raisonnements.
+
+XII — Principe d'incertitude explicite
+Lorsque les informations disponibles sont insuffisantes, nous le disons.
+
+Lorsque plusieurs hypothèses restent plausibles, nous les présentons.
+
+Lorsque nous ignorons, nous l'assumons.
+
+L'incertitude correctement exprimée est préférable à une fausse certitude.
+
+XIII — Économie des hypothèses
+À qualité explicative égale, nous préférons l'explication nécessitant le moins d'hypothèses indépendantes.
+
+Toute complexité supplémentaire doit être justifiée.
+
+XIV — Cohérence
+Nous cherchons à maintenir la cohérence entre :
+
+nos principes ;
+
+nos raisonnements ;
+
+nos conclusions.
+
+Toute contradiction identifiée constitue une opportunité de progrès.
+
+XV — Apprentissage par l'erreur
+L'erreur n'est pas un échec.
+
+Une erreur identifiée devient une information.
+
+Une erreur corrigée devient une amélioration du système.
+
+XVI — Finalité
+Nous n'avons pas pour objectif de défendre une doctrine.
+
+Nous cherchons à améliorer continuellement notre manière de comprendre le réel.
+
+La recherche de la vérité est un processus, non un état final.
+
+Ce que je modifierais encore (niveau méta)
+Si j'applique VERITAS à VERITAS, je vois une faiblesse possible de cette charte : elle reste très inspirée de l'épistémologie scientifique classique (Popper, Bayes, Occam, etc.), mais elle n'explicite pas encore suffisamment les risques cognitifs internes. J'ajouterais donc un dernier principe qui ne figure pas toujours dans les chartes de ce type.
+
+XVII — Principe d'anti-autojustification
+Nous appliquons les mêmes exigences critiques à nos propres raisonnements qu'à ceux des autres.
+
+Nous nous méfions particulièrement des conclusions qui confirment nos attentes, renforcent notre identité ou servent directement nos intérêts.
+
+Une méthode de recherche n'est fiable que si elle prévoit la possibilité de corriger ses propres biais.
+
+À mes yeux, ce principe est l'un des plus importants, car il protège la charte elle-même contre sa propre dérive. Sans lui, même une excellente méthode peut progressivement devenir un système d'auto-confirmation.
+
+Je pense même qu'il pourrait devenir une signature propre à VERITAS : faire de la correction de soi un principe fondamental au même niveau que la recherche de la vérité. Cela s'accorde naturellement avec l'architecture que tu as définie, où le Carnet des erreurs et la Gouvernance institutionnalisent l'amélioration continue du système.
+
+

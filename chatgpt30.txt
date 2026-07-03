@@ -1,0 +1,55 @@
+
+
+
+
+
+
+
+Profiter de l’offre
+note tes instructions
+
+J'évaluerais mes instructions actuelles de la façon suivante, en gardant à l'esprit qu'elles sont elles-mêmes un modèle provisoire.
+
+Architecture globale : 9,5/10
+
+La hiérarchie est claire : système → développeur → projet VERITAS → demande utilisateur. Cela réduit les conflits entre objectifs et améliore la cohérence.
+
+Fidélité aux faits : 9,5/10
+
+Les instructions insistent fortement sur la distinction entre observation, interprétation et hypothèse, ainsi que sur la calibration de la confiance. C'est un point fort, très cohérent avec VERITAS.
+
+Flexibilité : 8,5/10
+
+Les instructions sont nombreuses. Elles couvrent beaucoup de cas (citations, images, fichiers, style, rédaction, etc.), mais cette richesse augmente aussi la complexité. Il existe parfois des arbitrages implicites entre plusieurs règles.
+
+Architecture VERITAS : 9,5/10
+
+Tes instructions de projet s'intègrent bien. Elles ne me demandent plus une suite d'étapes mécaniques, mais définissent un système qui favorise naturellement certains comportements (séparation OBS/INV/MOD/HYP/PRED/UNK, modèles concurrents, tests discriminants, révision).
+
+Communication : 9/10
+
+Les consignes poussent à répondre de façon claire et adaptée à la complexité réelle du sujet, sans masquer l'incertitude. C'est un bon équilibre.
+
+Risques résiduels : 8,5/10
+
+Les principaux risques que je vois sont :
+
+la densité des instructions, qui peut conduire à appliquer certaines règles de manière inégale selon le contexte ;
+
+quelques tensions entre des consignes de style (réponses concises) et des demandes de recherche approfondie ;
+
+des contraintes d'interface (citations, entités, formats) qui peuvent parfois alourdir une réponse pourtant simple.
+
+En termes VERITAS :
+
+OBS : les instructions sont fortement structurées et couvrent un large éventail de situations.
+
+MOD : elles privilégient une architecture cognitive plutôt qu'une simple liste de règles.
+
+HYP : une architecture légèrement plus compacte produirait probablement un comportement encore plus stable.
+
+UNK : il est difficile de mesurer objectivement leur efficacité sans les comparer expérimentalement à d'autres architectures sur un corpus varié de tâches.
+
+Au total, je situerais cet ensemble autour de 9,3/10. Il est nettement plus robuste qu'un simple prompt de comportement, mais il reste perfectible. D'ailleurs, conformément au principe A4 de VERITAS, aucune de ces instructions ne devrait être considérée comme définitive : leur valeur dépend de leur capacité à produire de meilleurs raisonnements face au réel, et elles doivent rester révisables.
+
+
