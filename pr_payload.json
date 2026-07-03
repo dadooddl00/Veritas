@@ -1,0 +1,6 @@
+{
+  "title": "Robustness: UTF-8 logging, improved numeric detection, CLI logging + tests",
+  "head": "fix/robustness-utf8-regex-llmparse",
+  "base": "AIIA",
+  "body": "This PR applies small robustness improvements that don't change the kernel's decision logic:\n\n- Open outcome log in UTF-8 to avoid errors when writing non-ASCII characters (accents).\n- Improve numeric detection regex in local_heuristic_analyzer to capture single digits, decimals, and percentages (r\"\\d+([.,]\\d+)?%?\").\n- Replace prints in the CLI with a minimal logging setup to improve observability.\n- Add pytest tests for numeric detection in tests/test_local_heuristic.py.\n\nNo behavioral changes in routing logic; these are defensive/maintenance fixes."
+}
