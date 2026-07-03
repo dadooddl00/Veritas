@@ -13,6 +13,7 @@ Meta-rule: VERITAS applies to itself. All rules are provisional models.
 import os
 import json
 import re
+import logging
 from enum import Enum
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Tuple
@@ -156,6 +157,7 @@ class Constraint:
 # ======================================================================
 # MODE ROUTING: Direct / Standard / Approfondi
 # ======================================================================
+
 
 def compute_effective_uncertainty(ctx: DecisionContext) -> float:
     """Combine topic uncertainty with analyzer confidence.
@@ -412,9 +414,9 @@ def local_heuristic_analyzer(prompt: str) -> dict:
     p = prompt.lower()
     words = p.split()
 
-    # Quantitative detection
+    # Quantitative detection — improved regex to catch single digits, decimals and percentages
     quantitative = (
-        bool(re.search(r"\d{2,}", p))
+        bool(re.search(r"\d+([.,]\d+)?%?", p))
         or any(w in p for w in KEYWORDS_QUANTITATIVE)
     )
 
@@ -472,6 +474,7 @@ def local_heuristic_analyzer(prompt: str) -> dict:
 # OUTCOME LOGGING (Self-application layer)
 # ======================================================================
 
+
 @dataclass
 class RoutingOutcome:
     """Record of how a prompt was routed and (optionally) how it performed."""
@@ -525,8 +528,9 @@ class OutcomeLogger:
         self._write_outcome(outcome)
 
     def _write_outcome(self, outcome: RoutingOutcome) -> None:
-        """Append outcome to log file."""
-        with open(self.log_file, "a") as f:
+        """Append outcome to log file (UTF-8 encoded)."""
+        # Open with explicit UTF-8 encoding to safely write non-ASCII text
+        with open(self.log_file, "a", encoding="utf-8") as f:
             line = json.dumps({
                 "timestamp": outcome.timestamp,
                 "prompt_hash": outcome.prompt_hash,
@@ -562,6 +566,7 @@ class OutcomeLogger:
 # ======================================================================
 # ANALYZER + RUN
 # ======================================================================
+
 
 class PromptAnalyzerLocal:
     """Pure local analyzer — no API."""
@@ -606,6 +611,7 @@ def run(prompt: str, log_outcomes: bool = True) -> dict:
 # INTERACTIVE DEMO
 # ======================================================================
 
+
 def pretty_print_pipeline(pipeline: dict) -> None:
     """Pretty-print the pipeline spec."""
     print("\n" + "=" * 70)
@@ -631,18 +637,22 @@ def pretty_print_pipeline(pipeline: dict) -> None:
 
 
 if __name__ == "__main__":
-    print("=" * 70)
-    print("VERITAS Kernel — Local Heuristic Mode (Offline)")
-    print("=" * 70)
-    print("(Pure local analysis — no API calls needed.)")
-    print("Type 'quit' or Ctrl+C to exit.\n")
+    # Configure logging for CLI usage
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("veritas")
+
+    logger.info("=" * 70)
+    logger.info("VERITAS Kernel — Local Heuristic Mode (Offline)")
+    logger.info("=" * 70)
+    logger.info("(Pure local analysis — no API calls needed.)")
+    logger.info("Type 'quit' or Ctrl+C to exit.\n")
 
     try:
         while True:
             try:
                 prompt = input("Prompt > ").strip()
             except (EOFError, KeyboardInterrupt):
-                print("\n[Exit]")
+                logger.info("\n[Exit]")
                 break
 
             if prompt.lower() in ("quit", "exit"):
@@ -653,4 +663,4 @@ if __name__ == "__main__":
                 pretty_print_pipeline(pipeline)
 
     except KeyboardInterrupt:
-        print("\n[Interrupted]")
+        logger.info("\n[Interrupted]")
